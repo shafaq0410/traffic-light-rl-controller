@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚦 Traffic Light RL Controller</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #e2e8f0;
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        h1 {
+            font-size: 3rem;
+            color: #fbbf24;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+        }
+
+        .subtitle {
+            color: #94a3b8;
+            font-size: 1.2rem;
+        }
+
+        .control-panel {
+            background: rgba(30, 41, 59, 0.8);
+            backdrop-filter: blur(10px);
+            border-radius: 1rem;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            border: 1px solid #334155;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 1rem 2rem;
+            font-size: 1rem;
+            font-weight: 600;
+            border: none;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: white;
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(59, 130, 246, 0.3);
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            border: 1px solid #475569;
+        }
+
+        .metric-label {
+            color: #94a3b8;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #fbbf24;
+        }
+
+        .metric-unit {
+            font-size: 1rem;
+            color: #cbd5e1;
+        }
+
+        .visualization-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .viz-card {
+            background: rgba(30, 41, 59, 0.8);
+            backdrop-filter: blur(10px);
+            border-radius: 1rem;
+            padding: 2rem;
+            border: 1px solid #334155;
+        }
+
+        .viz-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            color: #e2e8f0;
+        }
+
+        .intersection {
+            position: relative;
+            width: 400px;
+            height: 400px;
+            margin: 2rem auto;
+        }
+
+        .road {
+            position: absolute;
+            background: #374151;
+        }
+
+        .road-vertical {
+            left: 50%;
+            top: 0;
+            bottom: 0;
+            width: 120px;
+            transform: translateX(-50%);
+        }
+
+        .road-horizontal {
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 120px;
+            transform: translateY(-50%);
+        }
+
+        .intersection-center {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: 120px;
+            height: 120px;
+            background: #4b5563;
+            transform: translate(-50%, -50%);
+        }
+
+        .traffic-light {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            box-shadow: 0 0 20px currentColor;
+            transition: all 0.5s;
+        }
+
+        .light-green {
+            background: #10b981;
+        }
+
+        .light-red {
+            background: #ef4444;
+        }
+
+        .queue-indicator {
+            position: absolute;
+            display: flex;
+            gap: 5px;
+            align-items: center;
+        }
+
+        .car-icon {
+            font-size: 1.5rem;
+        }
+
+        .queue-count {
+            background: #fbbf24;
+            color: #0f172a;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-weight: bold;
+        }
+
+        .status-bar {
+            background: rgba(30, 41, 59, 0.8);
+            backdrop-filter: blur(10px);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            text-align: center;
+            border: 1px solid #334155;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #1e293b;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 0.5rem;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+            transition: width 0.3s;
+        }
+
+        @media (max-width: 768px) {
+            .visualization-grid {
+                grid-template-columns: 1fr;
+            }
+
+            h1 {
+                font-size: 2rem;
+            }
+
+            .intersection {
+                width: 300px;
+                height: 300px;
+            }
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>
+                🚦 Traffic Light RL Controller
+            </h1>
+            <p class="subtitle">Self-Learning Traffic Optimization with Q-Learning</p>
+        </header>
+
+        <div class="control-panel">
+            <div class="btn-group">
+                <button class="btn-primary" id="trainBtn" onclick="startTraining()">
+                    <span>📚</span>
+                    Start Training (200 episodes)
+                </button>
+                <button class="btn-secondary" id="simulateBtn" onclick="startSimulation()" disabled>
+                    <span>▶️</span>
+                    Run Simulation
+                </button>
+            </div>
+        </div>
+
+        <div id="statusBar" class="status-bar" style="display: none;">
+            <div id="statusText">Training in progress...</div>
+            <div class="progress-bar">
+                <div id="progressFill" class="progress-fill" style="width: 0%"></div>
+            </div>
+        </div>
+
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div class="metric-label">🤖 RL Agent Wait Time</div>
+                <div class="metric-value" id="rlWait">0<span class="metric-unit">s</span></div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">⏰ Fixed-Time Wait Time</div>
+                <div class="metric-value" id="fixedWait">0<span class="metric-unit">s</span></div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">📈 Improvement</div>
+                <div class="metric-value" id="improvement">0<span class="metric-unit">%</span></div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">🎯 Training Progress</div>
+                <div class="metric-value" id="progress">0<span class="metric-unit">/200</span></div>
+            </div>
+        </div>
+
+        <div class="visualization-grid">
+            <div class="viz-card">
+                <h2 class="viz-title">📊 Training Progress</h2>
+                <canvas id="trainingChart"></canvas>
+            </div>
+
+            <div class="viz-card">
+                <h2 class="viz-title">🚗 Live Intersection</h2>
+                <div class="intersection">
+                    <div class="road road-vertical"></div>
+                    <div class="road road-horizontal"></div>
+                    <div class="intersection-center"></div>
+
+                    <!-- Traffic Lights -->
+                    <div class="traffic-light light-green" id="lightN" style="left: 50%; top: 20%; transform: translateX(-50%);"></div>
+                    <div class="traffic-light light-green" id="lightS" style="left: 50%; bottom: 20%; transform: translateX(-50%);"></div>
+                    <div class="traffic-light light-red" id="lightE" style="right: 20%; top: 50%; transform: translateY(-50%);"></div>
+                    <div class="traffic-light light-red" id="lightW" style="left: 20%; top: 50%; transform: translateY(-50%);"></div>
+
+                    <!-- Queue Indicators -->
+                    <div class="queue-indicator" style="left: 50%; top: 5%; transform: translateX(-50%);">
+                        <span class="car-icon">🚗</span>
+                        <span class="queue-count" id="queueN">0</span>
+                    </div>
+                    <div class="queue-indicator" style="left: 50%; bottom: 5%; transform: translateX(-50%);">
+                        <span class="car-icon">🚗</span>
+                        <span class="queue-count" id="queueS">0</span>
+                    </div>
+                    <div class="queue-indicator" style="left: 5%; top: 50%; transform: translateY(-50%);">
+                        <span class="car-icon">🚗</span>
+                        <span class="queue-count" id="queueW">0</span>
+                    </div>
+                    <div class="queue-indicator" style="right: 5%; top: 50%; transform: translateY(-50%);">
+                        <span class="car-icon">🚗</span>
+                        <span class="queue-count" id="queueE">0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let trainingChart;
+        let updateInterval;
+
+        // Initialize chart
+        const ctx = document.getElementById('trainingChart').getContext('2d');
+        trainingChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Total Waiting Time',
+                    data: [],
+                    borderColor: '#10b981',
+                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        labels: { color: '#e2e8f0' }
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: { color: '#94a3b8' },
+                        grid: { color: '#334155' }
+                    },
+                    y: {
+                        ticks: { color: '#94a3b8' },
+                        grid: { color: '#334155' }
+                    }
+                }
+            }
+        });
+
+        async function startTraining() {
+            const trainBtn = document.getElementById('trainBtn');
+            trainBtn.disabled = true;
+            trainBtn.innerHTML = '<span class="spinner"></span> Training...';
+
+            document.getElementById('statusBar').style.display = 'block';
+
+            try {
+                await fetch('/api/start_training', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ episodes: 200 })
+                });
+
+                updateInterval = setInterval(updateTrainingStatus, 500);
+            } catch (error) {
+                console.error('Error starting training:', error);
+                trainBtn.disabled = false;
+                trainBtn.innerHTML = '<span>📚</span> Start Training';
+            }
+        }
+
+        async function updateTrainingStatus() {
+            try {
+                const statusRes = await fetch('/api/training_status');
+                const status = await statusRes.json();
+
+                document.getElementById('progress').innerHTML = 
+                    `${status.episode}<span class="metric-unit">/${status.total_episodes}</span>`;
+
+                const progress = (status.episode / status.total_episodes) * 100;
+                document.getElementById('progressFill').style.width = progress + '%';
+
+                if (!status.is_training && status.episode > 0) {
+                    clearInterval(updateInterval);
+                    document.getElementById('statusBar').style.display = 'none';
+                    
+                    document.getElementById('rlWait').innerHTML = 
+                        `${Math.round(status.metrics.rl_wait)}<span class="metric-unit">s</span>`;
+                    document.getElementById('fixedWait').innerHTML = 
+                        `${Math.round(status.metrics.fixed_wait)}<span class="metric-unit">s</span>`;
+                    document.getElementById('improvement').innerHTML = 
+                        `${Math.round(status.metrics.improvement)}<span class="metric-unit">%</span>`;
+
+                    const trainBtn = document.getElementById('trainBtn');
+                    trainBtn.disabled = false;
+                    trainBtn.innerHTML = '<span>📚</span> Start Training';
+
+                    document.getElementById('simulateBtn').disabled = false;
+
+                    await updateChart();
+                }
+            } catch (error) {
+                console.error('Error updating status:', error);
+            }
+        }
+
+        async function updateChart() {
+            try {
+                const historyRes = await fetch('/api/training_history');
+                const data = await historyRes.json();
+
+                const history = data.history;
+                if (history.length > 0) {
+                    trainingChart.data.labels = history.map(h => h.episode);
+                    trainingChart.data.datasets[0].data = history.map(h => h.wait_time);
+                    trainingChart.update();
+                }
+            } catch (error) {
+                console.error('Error updating chart:', error);
+            }
+        }
+
+        async function startSimulation() {
+            try {
+                const response = await fetch('/api/simulate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ use_rl: true })
+                });
+
+                const data = await response.json();
+                animateSimulation(data.states);
+            } catch (error) {
+                console.error('Error running simulation:', error);
+            }
+        }
+
+        function animateSimulation(states) {
+            let index = 0;
+            const interval = setInterval(() => {
+                if (index >= states.length) {
+                    clearInterval(interval);
+                    return;
+                }
+
+                const state = states[index];
+                
+                // Update queues
+                document.getElementById('queueN').textContent = state.queues.N;
+                document.getElementById('queueS').textContent = state.queues.S;
+                document.getElementById('queueE').textContent = state.queues.E;
+                document.getElementById('queueW').textContent = state.queues.W;
+
+                // Update lights
+                const lights = ['N', 'S', 'E', 'W'];
+                lights.forEach(dir => {
+                    const light = document.getElementById('light' + dir);
+                    if (state.phase === 0 && (dir === 'N' || dir === 'S')) {
+                        light.className = 'traffic-light light-green';
+                    } else if (state.phase === 1 && (dir === 'E' || dir === 'W')) {
+                        light.className = 'traffic-light light-green';
+                    } else {
+                        light.className = 'traffic-light light-red';
+                    }
+                });
+
+                index++;
+            }, 300);
+        }
+    </script>
+</body>
+</html>
