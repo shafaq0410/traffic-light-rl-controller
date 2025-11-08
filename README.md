@@ -4,8 +4,15 @@
 
 A self-learning traffic light system that uses Q-Learning to optimize traffic flow and reduce waiting times by 20-40% compared to traditional fixed-time controllers.
 
+<img width="1867" height="563" alt="image" src="https://github.com/user-attachments/assets/d2e405a2-5d1e-4301-8002-a8995233105d" />
 
 
+
+<img width="1867" height="720" alt="image" src="https://github.com/user-attachments/assets/9d81809f-3f88-492f-807d-78a091e07195" />
+
+
+
+<img width="1784" height="746" alt="image" src="https://github.com/user-attachments/assets/8552b2bb-9c4c-4a89-89e7-b466e80cf02c" />
 
 
 
